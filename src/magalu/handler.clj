@@ -85,8 +85,17 @@
       (context "/produtos" []
         :tags ["produtos"]
 
-        ;(GET "/")
-        ;(GET "/:id")
+        (GET "/" []
+          :return [Produto]
+          :summary "Listar todos os produtos"
+          (ok @db-produto))
+
+        (GET "/:id" [id]
+          :return Produto
+          :summary "Retornar um produto"
+          (if-let [produto (first (filter #(= (Integer/parseInt id) (:id %)) @db-produto))]
+                  (ok produto)
+                  (not-found)))
 
         (POST "/" []
           :return Produto
@@ -94,9 +103,19 @@
           :summary "Criar um produto"
           (created "" (salvar-produto produto)))
 
-        ;(DELETE "/:id")
-        ;(PUT "/:id")
+        (DELETE "/:id" [id]
+          :summary "Deletar produto"
+          (let [produtos (remove #(= (Integer/parseInt id) (:id %)) @db-produto)]
+            (reset! db-produto produtos)
+            (ok)))
 
-        )
+        (PUT "/:id" [id]
+          :return [Produto]
+          :body [produto Produto]
+          :summary "Editar produto"
+          (let [produtos (remove #(= (Integer/parseInt id) (:id %)) @db-produto)]
+            (reset! db-produto produtos)
+            (swap! db-produto conj (assoc produto :id (Integer/parseInt id)))
+            (ok @db-produto)))
 
-      )))
+        ))))
