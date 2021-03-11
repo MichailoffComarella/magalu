@@ -4,11 +4,15 @@
 
 (deftest db-features
   (testing "Posso iniciar um novo db"
-    (is (not (nil? (amnesia/cria-db))))
-    (is (= )))
+    (let [db (amnesia/cria-db)]
+      (is (not (nil? db)))
+      (is (instance? clojure.lang.Atom db))))
 
   (testing "Posso adicionar uma nova coleção"
-    (is false))
+    (let [db (amnesia/cria-db)
+          colecao [1 2 3 4]]
+      (swap! db conj colecao)
+      (is false)))
 
   (testing "Posso remover um coleção"
     (is false))
