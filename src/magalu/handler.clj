@@ -13,7 +13,8 @@
   {(s/optional-key :id) s/Num
    :itens               [Produto]})
 
-(def db (atom []))
+(def db (atom {:pedidos  []
+               :produtos []}))
 
 (def index (atom 1))
 
@@ -94,8 +95,8 @@
           :return Produto
           :summary "Retornar um produto"
           (if-let [produto (first (filter #(= (Integer/parseInt id) (:id %)) @db-produto))]
-                  (ok produto)
-                  (not-found)))
+            (ok produto)
+            (not-found)))
 
         (POST "/" []
           :return Produto
