@@ -4,20 +4,24 @@
 
 (deftest db-features
   (testing "Posso iniciar um novo db"
-    (let [db (amnesia/cria-db)]
-      (is (not (nil? db)))
-      (is (instance? clojure.lang.Atom db))))
+      (is (not (nil? (amnesia/cria-db))))
+      (is (instance? clojure.lang.Atom (amnesia/cria-db))))
 
   (testing "Posso adicionar uma nova coleção"
     (let [db (amnesia/cria-db)
-          colecao {:nome "Max" :idade "33"}]
-      (swap! db conj colecao)
+          colecao {:nome "Max" :idade 33}]
+      (amnesia/adiciona-colecao db colecao)
       (is (not (empty? @db)))
       (is (= @db [colecao]))))
 
+  (testing "Posso criar uma coleção"
+    (let [db (amnesia/cria-db)
+          colecao (amnesia/cria-colecao db "nome")]
+      (is (not (empty? @db)))))
+
   (testing "Posso remover uma coleção"
     (let [db (amnesia/cria-db)
-          colecao {:nome "Max" :idade "33"}]
+          colecao {:nome "Max" :idade 33}]
       (swap! db conj colecao)
       (reset! db [])
       (is (empty? @db))))
