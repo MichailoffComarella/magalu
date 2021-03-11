@@ -10,12 +10,17 @@
 
   (testing "Posso adicionar uma nova coleção"
     (let [db (amnesia/cria-db)
-          colecao [1 2 3 4]]
+          colecao {:nome "Max" :idade "33"}]
       (swap! db conj colecao)
-      (is false)))
+      (is (not (empty? @db)))
+      (is (= @db [colecao]))))
 
-  (testing "Posso remover um coleção"
-    (is false))
+  (testing "Posso remover uma coleção"
+    (let [db (amnesia/cria-db)
+          colecao {:nome "Max" :idade "33"}]
+      (swap! db conj colecao)
+      (reset! db [])
+      (is (empty? @db))))
 
   (testing "Posso adicionar um novo item a uma coleção"
     (is false))
