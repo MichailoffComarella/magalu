@@ -26,16 +26,27 @@
       (is (not (contains? @db :produtos)))))
 
   (testing "Posso adicionar um novo item a uma coleção"
-    (is false))
+    (let [db (amnesia/cria-db {:pedidos [] :produtos []})]
+      (amnesia/adiciona-item db :pedidos "qualquer coisa")
+      (is (some #(= % "qualquer coisa") (:pedidos @db)))))
 
   (testing "Posso remover um item de uma coleção"
-    (is false))
+    (let [db (amnesia/cria-db {:pedidos ["alguma coisa"] :produtos ["qualquer coisa"]})]
+      (amnesia/remove-item db :pedidos "alguma coisa")
+      (is (not (some #(= % ["alguma coisa"]) (:pedidos @db))))))
 
   (testing "Posso remover vários itens de uma coleção"
-    (is false))
+    (let [db (amnesia/cria-db {:pedidos ["alguma coisa" "mais alguma coisa" "ultima coisa"]
+                               :produtos ["qualquer coisa"]})]
+      (amnesia/remove-itens db :pedidos ["mais alguma coisa" "ultima coisa"])
+      (is (not (some #(and (= % "mais alguma coisa")
+                           (= % "ultima coisa"))
+                     (:pedidos db))))))
 
   (testing "Posso remover todos os itens de uma coleção"
-    (is false))
+    (let [db (amnesia/cria-db {:pedidos ["alguma coisa" "mais alguma coisa" "ultima coisa"]
+                               :produtos ["qualquer coisa"]})]
+      (is false)))
 
   (testing "Posso pesquisar itens de uma coleção"
     (is false))
