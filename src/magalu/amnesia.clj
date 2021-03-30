@@ -22,4 +22,15 @@
 (defn remove-itens [db colecao itens]
   (swap! db update colecao (fn [valor-velho] (vec (remove #(esta-contido? % itens) valor-velho)))))
 
+(defn remove-todos-itens [db colecao]
+  (swap! db update colecao #(replace % [])))
+
+(defn pesquisar-nome [db colecao nome]
+  (filter #(= % nome) (colecao @db)))
+
+(defn pesquisar-posicao [db colecao posicao]
+  (get (colecao @db) posicao))
+
+(defn atualiza-item-nome [db colecao item novo-item]
+  (swap! db update colecao (fn [valor-velho] (conj (vec (remove #(= % item) valor-velho)) novo-item))))
 
