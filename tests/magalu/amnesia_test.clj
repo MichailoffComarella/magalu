@@ -31,39 +31,28 @@
       (is (some #(= % "qualquer coisa") (:pedidos @db)))))
 
   (testing "Posso remover um item de uma coleção"
-    (let [db (amnesia/cria-db {:pedidos ["alguma coisa"] :produtos ["qualquer coisa"]})]
-      (amnesia/remove-item db :pedidos "alguma coisa")
-      (is (not (some #(= % ["alguma coisa"]) (:pedidos @db))))))
+    (let [db (amnesia/cria-db {:pedidos ["alguma coisa"]})]
+      (amnesia/remove-item db :pedidos #(= % "alguma coisa"))
+      (is (empty? (:pedidos @db)))))
 
-  (testing "Posso remover vários itens de uma coleção"
-    (let [db (amnesia/cria-db {:pedidos ["alguma coisa" "mais alguma coisa" "ultima coisa"]
-                               :produtos ["qualquer coisa"]})]
-      (amnesia/remove-itens db :pedidos ["mais alguma coisa" "ultima coisa"])
-      (is (not (some #(and (= % "mais alguma coisa")
-                           (= % "ultima coisa"))
-                     (:pedidos db))))))
+  (testing "Posso remover itens de uma coleção"
+    (let [db (amnesia/cria-db {:pedidos [{:id 1 :nome "nome"}
+                                         {:id 3 :nome "nome"}
+                                         {:id 5 :nome "nome"}]})]
+      (amnesia/remove-item db :pedidos #(odd? (:id %)))
+      (is (empty? (:pedidos @db)))))
 
   (testing "Posso remover todos os itens de uma coleção"
-    (let [db (amnesia/cria-db {:pedidos ["alguma coisa" "mais alguma coisa" "ultima coisa"]
-                               :produtos ["qualquer coisa"]})]
+    (let [db (amnesia/cria-db {:pedidos ["alguma coisa" "mais alguma coisa" "ultima coisa"]})]
       (amnesia/remove-todos-itens db :pedidos)
       (is (empty? (:pedidos db)))))
 
-  (testing "Posso pesquisar itens de uma coleção por nome"
-    (let [db (amnesia/cria-db {:pedidos ["alguma coisa" "mais alguma coisa" "ultima coisa"]
-                               :produtos ["qualquer coisa"]})
-          resultado (first (amnesia/pesquisar-nome db :pedidos "alguma coisa"))]
-      (is (= "alguma coisa" resultado))))
+  (testing "Posso pesquisar itens de uma coleção"
+    (let [db (amnesia/cria-db {:pedidos [{:id 1 :nome "nome"}]})]
+      (is (amnesia/pesquisa-item db :pedidos #(= (:id %) 1)))))
 
-  (testing "Posso pesquisar itens de uma coleção por posição"
-    (let [db (amnesia/cria-db {:pedidos ["alguma coisa" "mais alguma coisa" "ultima coisa"]
-                               :produtos ["qualquer coisa"]})
-          resultado (amnesia/pesquisar-posicao db :pedidos 0)]
-      (is (= "alguma coisa" resultado))))
-
-  (testing "Posso atualizar um item uma coleção por nome"
-    (let [db (amnesia/cria-db {:pedidos ["alguma coisa" "mais alguma coisa" "ultima coisa"]
-                               :produtos ["qualquer coisa"]})]
-      (amnesia/atualiza-item-nome db :pedidos "alguma coisa" "nova coisa")
+  (testing "Posso atualizar um item uma coleção"
+    (let [db (amnesia/cria-db {:pedidos ["alguma coisa"]})]
+      (amnesia/atualiza-item db :pedidos #(= "alguma coisa" %) "nova coisa")
      (is (and (some #(= % "nova coisa") (:pedidos @db))
               (not (some #(= % "alguma coisa") (:pedidos @db))))))))
