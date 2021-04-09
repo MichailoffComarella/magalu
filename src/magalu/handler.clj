@@ -1,7 +1,8 @@
 (ns magalu.handler
   (:require [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [magalu.amnesia :as amnesia]))
 
 (s/defschema Produto
   {(s/optional-key :id) s/Num
@@ -13,24 +14,22 @@
   {(s/optional-key :id) s/Num
    :itens               [Produto]})
 
-(def db (atom {:pedidos  []
-               :produtos []}))
+(def db (amnesia/cria-db {:pedidos  []
+                          :produtos []}))
 
 (def index (atom 1))
 
 (def index-produto (atom 1))
 
-(def db-produto (atom []))
-
 (defn salvar-pedido [pedido]
   (let [pedido-indexado (assoc pedido :id @index)]
-    (swap! db conj pedido-indexado)
+    (amnesia/adiciona-item db :pedidos pedido-indexado)
     (swap! index inc)
     pedido-indexado))
 
 (defn salvar-produto [produto]
   (let [produto-indexado (assoc produto :id @index-produto)]
-    (swap! db-produto conj produto-indexado)
+    (amnesia/adiciona-item db :produtos produto-indexado)
     (swap! index-produto inc)
     produto-indexado))
 
@@ -53,12 +52,12 @@
         (GET "/" []
           :return [Pedido]
           :summary "Listar todos os pedidos"
-          (ok @db))
+          (ok (:pedidos @db)))
 
         (GET "/:id" [id]
           :return Pedido
           :summary "Retornar o pedido por id."
-          (if-let [pedido (first (filter #(= (Integer/parseInt id) (:id %)) @db))]
+          (if-let [pedido (first (amnesia/pesquisa-item db :pedidos #(= (Integer/parseInt id) (:id %))))]
             (ok pedido)
             (not-found)))
 
@@ -70,18 +69,16 @@
 
         (DELETE "/:id" [id]
           :summary "Excluir um pedido"
-          (let [pedidos (remove #(= (Integer/parseInt id) (:id %)) @db)]
-            (reset! db pedidos)
-            (ok)))
+          (amnesia/remove-item db :pedidos #(= (Integer/parseInt id) (:id %)))
+          (ok))
 
         (PUT "/:id" [id]
           :return [Pedido]
           :body [pedido Pedido]
           :summary "Corrigir um pedido"
-          (let [pedidos (remove #(= (Integer/parseInt id) (:id %)) @db)]
-            (reset! db pedidos)
-            (swap! db conj (assoc pedido :id (Integer/parseInt id)))
-            (ok @db))))
+          (let [novo-pedido (assoc pedido :id (Integer/parseInt id))]
+            (amnesia/atualiza-item db :pedidos #(= (Integer/parseInt id) (:id %)) novo-pedido)
+            (ok (:pedidos @db)))))
 
       (context "/produtos" []
         :tags ["produtos"]
@@ -89,12 +86,12 @@
         (GET "/" []
           :return [Produto]
           :summary "Listar todos os produtos"
-          (ok @db-produto))
+          (ok (:produtos @db)))
 
         (GET "/:id" [id]
           :return Produto
           :summary "Retornar um produto"
-          (if-let [produto (first (filter #(= (Integer/parseInt id) (:id %)) @db-produto))]
+          (if-let [produto (first(amnesia/pesquisa-item db :produtos #(= (Integer/parseInt id) (:id %))))]
             (ok produto)
             (not-found)))
 
@@ -106,17 +103,15 @@
 
         (DELETE "/:id" [id]
           :summary "Deletar produto"
-          (let [produtos (remove #(= (Integer/parseInt id) (:id %)) @db-produto)]
-            (reset! db-produto produtos)
-            (ok)))
+          (amnesia/remove-item db :produtos #(= (Integer/parseInt id) (:id %)))
+          (ok))
 
         (PUT "/:id" [id]
           :return [Produto]
           :body [produto Produto]
-          :summary "Editar produto"
-          (let [produtos (remove #(= (Integer/parseInt id) (:id %)) @db-produto)]
-            (reset! db-produto produtos)
-            (swap! db-produto conj (assoc produto :id (Integer/parseInt id)))
-            (ok @db-produto)))
+          :summary "Corrigir um produto"
+          (let [novo-produto (assoc produto :id (Integer/parseInt id))]
+            (amnesia/atualiza-item db :produtos #(= (Integer/parseInt id) (:id %)) novo-produto)
+            (ok (:produtos @db))))
 
         ))))

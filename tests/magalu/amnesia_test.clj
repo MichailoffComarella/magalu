@@ -55,4 +55,9 @@
     (let [db (amnesia/cria-db {:pedidos ["alguma coisa"]})]
       (amnesia/atualiza-item db :pedidos #(= "alguma coisa" %) "nova coisa")
      (is (and (some #(= % "nova coisa") (:pedidos @db))
-              (not (some #(= % "alguma coisa") (:pedidos @db))))))))
+              (not (some #(= % "alguma coisa") (:pedidos @db)))))))
+
+  (testing "Atualizar um item inexistente não modifica a coleção"
+    (let [db (amnesia/cria-db {:pedidos []})]
+      (amnesia/atualiza-item db :pedidos #(= 1 (:id %)) {:id 1 :nome "novo item"})
+      (is (empty? (:pedidos @db))))))

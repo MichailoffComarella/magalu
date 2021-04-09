@@ -23,9 +23,11 @@
   (filter predicado (colecao @db)))
 
 (defn atualiza-item [db colecao predicado novo-item]
-  (swap! db update colecao (fn [valor-velho]
-                             (->> valor-velho
-                                  (remove predicado)
-                                  (cons novo-item)
-                                  (vec)))))
+  (if-not (some predicado (colecao @db))
+    db
+    (swap! db update colecao (fn [valor-velho]
+                               (->> valor-velho
+                                    (remove predicado)
+                                    (cons novo-item)
+                                    (vec))))))
 
