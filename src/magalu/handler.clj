@@ -14,24 +14,69 @@
   {(s/optional-key :id) s/Num
    :itens               [Produto]})
 
-(def db (amnesia/cria-db {:pedidos  []
-                          :produtos []}))
+(def db (amnesia/cria-db {"pedidos"  {:indice (atom 0)
+                                     :itens  []}
+                          "produtos" {:indice (atom 0)
+                                     :itens  []}}))
 
-(def index (atom 1))
+(defn id-igual? [id item]
+  (= (Integer/parseInt id) (:id item)))
 
-(def index-produto (atom 1))
+(defn busca-todos [colecao db]
+  (ok (get-in @db [colecao :itens])))
 
-(defn salvar-pedido [pedido]
-  (let [pedido-indexado (assoc pedido :id @index)]
-    (amnesia/adiciona-item db :pedidos pedido-indexado)
-    (swap! index inc)
-    pedido-indexado))
+(defn busca-por-id [colecao id db]
+  (if-let [item (first (amnesia/pesquisa-item colecao (partial id-igual? id) db))]
+    (ok item)
+    (not-found)))
 
-(defn salvar-produto [produto]
-  (let [produto-indexado (assoc produto :id @index-produto)]
-    (amnesia/adiciona-item db :produtos produto-indexado)
-    (swap! index-produto inc)
-    produto-indexado))
+(defn cria-item [colecao item db]
+  (amnesia/adiciona-item colecao item db)
+  (created "" item))
+
+(defn remove-item [colecao id db]
+  (if (empty? (amnesia/pesquisa-item colecao (partial id-igual? id) db))
+    (not-found)
+    (do (amnesia/remove-item colecao (partial id-igual? id) db)
+        (ok))))
+
+(defn altera-item [colecao id alteracao db]
+  (if (empty? (amnesia/pesquisa-item colecao (partial id-igual? id) db))
+    (not-found)
+    (let [db-atualizado (amnesia/atualiza-item colecao (partial id-igual? id) alteracao db)]
+      (->> (get-in db-atualizado [colecao :itens])
+           (filter (partial id-igual? id))
+           (first)
+           (ok)))))
+
+(defn cria-contexto [^String nome esquema db]
+  (context (str "/" nome) []
+    :tags [nome]
+
+    (GET "/" []
+      :return [esquema]
+      :summary (str "Listar todos os " nome)
+      (busca-todos nome db))
+
+    (GET "/:id" [id]
+      :return esquema
+      :summary "Retornar o item por id."
+      (busca-por-id nome id db))
+
+    (POST "/" []
+      :return esquema
+      :body [item esquema]
+      :summary "Criar um item"
+      (cria-item nome item db))
+
+    (DELETE "/:id" [id]
+      :summary "Excluir um item"
+      (remove-item nome id db))
+
+    (PUT "/:id" [id]
+      :body [item esquema]
+      :summary "Alterar um item"
+      (altera-item nome id item db))))
 
 (def app
   (api
@@ -46,72 +91,5 @@
     (context "/api" []
       :tags ["api"]
 
-      (context "/pedidos" []
-        :tags ["pedidos"]
-
-        (GET "/" []
-          :return [Pedido]
-          :summary "Listar todos os pedidos"
-          (ok (:pedidos @db)))
-
-        (GET "/:id" [id]
-          :return Pedido
-          :summary "Retornar o pedido por id."
-          (if-let [pedido (first (amnesia/pesquisa-item db :pedidos #(= (Integer/parseInt id) (:id %))))]
-            (ok pedido)
-            (not-found)))
-
-        (POST "/" []
-          :return Pedido
-          :body [pedido Pedido]
-          :summary "Fazer um pedido"
-          (created "" (salvar-pedido pedido)))
-
-        (DELETE "/:id" [id]
-          :summary "Excluir um pedido"
-          (amnesia/remove-item db :pedidos #(= (Integer/parseInt id) (:id %)))
-          (ok))
-
-        (PUT "/:id" [id]
-          :return [Pedido]
-          :body [pedido Pedido]
-          :summary "Corrigir um pedido"
-          (let [novo-pedido (assoc pedido :id (Integer/parseInt id))]
-            (amnesia/atualiza-item db :pedidos #(= (Integer/parseInt id) (:id %)) novo-pedido)
-            (ok (:pedidos @db)))))
-
-      (context "/produtos" []
-        :tags ["produtos"]
-
-        (GET "/" []
-          :return [Produto]
-          :summary "Listar todos os produtos"
-          (ok (:produtos @db)))
-
-        (GET "/:id" [id]
-          :return Produto
-          :summary "Retornar um produto"
-          (if-let [produto (first(amnesia/pesquisa-item db :produtos #(= (Integer/parseInt id) (:id %))))]
-            (ok produto)
-            (not-found)))
-
-        (POST "/" []
-          :return Produto
-          :body [produto Produto]
-          :summary "Criar um produto"
-          (created "" (salvar-produto produto)))
-
-        (DELETE "/:id" [id]
-          :summary "Deletar produto"
-          (amnesia/remove-item db :produtos #(= (Integer/parseInt id) (:id %)))
-          (ok))
-
-        (PUT "/:id" [id]
-          :return [Produto]
-          :body [produto Produto]
-          :summary "Corrigir um produto"
-          (let [novo-produto (assoc produto :id (Integer/parseInt id))]
-            (amnesia/atualiza-item db :produtos #(= (Integer/parseInt id) (:id %)) novo-produto)
-            (ok (:produtos @db))))
-
-        ))))
+      (cria-contexto "pedidos" Pedido db)
+      (cria-contexto "produtos" Produto db))))
