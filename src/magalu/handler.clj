@@ -15,39 +15,14 @@
    :itens               [Produto]})
 
 (def db (amnesia/cria-db {"pedidos"  {:indice (atom 0)
-                                     :itens  []}
+                                      :modelo Pedido
+                                      :itens  []}
                           "produtos" {:indice (atom 0)
-                                     :itens  []}}))
+                                      :modelo Produto
+                                      :itens  []}}))
 
 (defn id-igual? [id item]
   (= (Integer/parseInt id) (:id item)))
-
-(defn busca-todos [colecao db]
-  (ok (get-in @db [colecao :itens])))
-
-(defn busca-por-id [colecao id db]
-  (if-let [item (first (amnesia/pesquisa-item colecao (partial id-igual? id) db))]
-    (ok item)
-    (not-found)))
-
-(defn cria-item [colecao item db]
-  (amnesia/adiciona-item colecao item db)
-  (created "" item))
-
-(defn remove-item [colecao id db]
-  (if (empty? (amnesia/pesquisa-item colecao (partial id-igual? id) db))
-    (not-found)
-    (do (amnesia/remove-item colecao (partial id-igual? id) db)
-        (ok))))
-
-(defn altera-item [colecao id alteracao db]
-  (if (empty? (amnesia/pesquisa-item colecao (partial id-igual? id) db))
-    (not-found)
-    (let [db-atualizado (amnesia/atualiza-item colecao (partial id-igual? id) alteracao db)]
-      (->> (get-in db-atualizado [colecao :itens])
-           (filter (partial id-igual? id))
-           (first)
-           (ok)))))
 
 (defn cria-contexto [^String nome esquema db]
   (context (str "/" nome) []
@@ -56,27 +31,37 @@
     (GET "/" []
       :return [esquema]
       :summary (str "Listar todos os " nome)
-      (busca-todos nome db))
+      (ok (get-in @db [nome :itens])))
 
     (GET "/:id" [id]
-      :return esquema
+      :return [esquema]
       :summary "Retornar o item por id."
-      (busca-por-id nome id db))
+      (let [resultado (amnesia/pesquisa-item nome (partial id-igual? id) db)]
+        (if (empty? (:itens resultado))
+          (not-found)
+          (ok (:itens resultado)))))
 
     (POST "/" []
-      :return esquema
-      :body [item esquema]
+      :return [esquema]
+      :body [item s/Any]
       :summary "Criar um item"
-      (cria-item nome item db))
+      (let [item-indexado (first (:itens (amnesia/adiciona-item nome item db)))]
+        (created "" item-indexado)))
 
     (DELETE "/:id" [id]
       :summary "Excluir um item"
-      (remove-item nome id db))
+      (if (empty? (:itens (amnesia/pesquisa-item nome (partial id-igual? id) db)))
+        (not-found)
+        (do (amnesia/remove-item nome (partial id-igual? id) db)
+            (ok))))
 
     (PUT "/:id" [id]
       :body [item esquema]
       :summary "Alterar um item"
-      (altera-item nome id item db))))
+      (if (empty? (:itens (amnesia/pesquisa-item nome (partial id-igual? id) db)))
+        (not-found)
+        (let [resultado (amnesia/atualiza-item nome (partial id-igual? id) item db)]
+          (ok (first (:itens resultado))))))))
 
 (def app
   (api
